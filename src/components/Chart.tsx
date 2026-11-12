@@ -61,6 +61,16 @@ interface ChartProps {
 const PAD = { left: 52, right: 68, top: 8, bottom: 26 }
 const OSC_HEIGHT = 92
 const AXIS_GAP = 12
+const RIGHT_GAP_RATIO = 0.1 // 10% del ancho del plot como separación derecha
+
+  /** Devuelve los límites de tiempo con una separación derecha proporcional al número de velas. */
+  function timeBounds(cs: Candle[]) {
+    const timeMin = cs[0].time
+    const intervalMs = (cs[1]?.time ?? cs[0].time + 1) - cs[0].time
+    const gapBars = RIGHT_GAP_RATIO * cs.length
+    const timeMax = cs[cs.length - 1].time + intervalMs * (1 + gapBars)
+    return { timeMin, timeMax, intervalMs }
+  }
 
 function readTheme(): ThemeColors {
   const cs = getComputedStyle(document.documentElement)
@@ -330,9 +340,8 @@ const scales = (cs: Candle[], mode: ScaleMode) => {
     const cs = displayCandles
     if (cs.length === 0) return
 
-    const sc = scales(cs, scaleMode)
-    const timeMin = cs[0].time
-    const timeMax = cs[cs.length - 1].time + (cs[1]?.time ?? cs[0].time + 1) - cs[0].time
+const sc = scales(cs, scaleMode)
+    const { timeMin, timeMax } = timeBounds(cs)
     const xOf = (t: number) =>
       plot.x + ((t - timeMin) / (timeMax - timeMin || 1)) * plot.w
     const yOf = (p: number) => {
@@ -711,11 +720,10 @@ ctx.fillStyle = theme.card
     if (!inPlot) return
     ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
 
-    if (activeTool !== 'cursor') {
+if (activeTool !== 'cursor') {
       const cs = displayCandles
       const sc = scales(cs, scaleMode)
-      const timeMin = cs[0].time
-      const timeMax = cs[cs.length - 1].time
+      const { timeMin, timeMax } = timeBounds(cs)
       const t = timeMin + ((x - plot.x) / plot.w) * (timeMax - timeMin)
       const v = sc.priceMax - ((y - plot.y) / plot.h) * (sc.priceMax - sc.priceMin)
       const price = sc.inv(v)
@@ -754,12 +762,11 @@ ctx.fillStyle = theme.card
     return
   }
 
-  const currentView = (): View => {
+const currentView = (): View => {
     const cs = displayCandles
     const { plot } = geom()
     const sc = scales(cs, scaleMode)
-    const timeMin = cs[0]?.time ?? 0
-    const timeMax = cs[cs.length - 1]?.time ?? 1
+    const { timeMin, timeMax } = timeBounds(cs)
     return {
       xOf: (t: number) => plot.x + ((t - timeMin) / (timeMax - timeMin || 1)) * plot.w,
       yOf: (p: number) => {
@@ -785,11 +792,10 @@ ctx.fillStyle = theme.card
       setHoverIdx(idx)
     } else setHoverIdx(null)
 
-    if (draft.current) {
+if (draft.current) {
       const cs = displayCandles
       const sc = scales(cs, scaleMode)
-      const timeMin = cs[0].time
-      const timeMax = cs[cs.length - 1].time
+      const { timeMin, timeMax } = timeBounds(cs)
       const t = timeMin + ((x - plot.x) / plot.w) * (timeMax - timeMin)
       const v = sc.priceMax - ((y - plot.y) / plot.h) * (sc.priceMax - sc.priceMin)
       const price = sc.inv(v)
@@ -902,7 +908,7 @@ ctx.fillStyle = theme.card
     }
   }
 
-  // brush needs freehand: collect points on move while down
+// brush needs freehand: collect points on move while down
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       if (!draft.current) return
@@ -911,8 +917,7 @@ ctx.fillStyle = theme.card
       const { plot } = geom()
       const cs = displayCandles
       const sc = scales(cs, scaleMode)
-      const timeMin = cs[0].time
-      const timeMax = cs[cs.length - 1].time
+      const { timeMin, timeMax } = timeBounds(cs)
       const t = timeMin + ((x - plot.x) / plot.w) * (timeMax - timeMin)
       const v = sc.priceMax - ((y - plot.y) / plot.h) * (sc.priceMax - sc.priceMin)
       draft.current.pts.push({ time: t, price: sc.inv(v) })
