@@ -6,6 +6,7 @@ export interface Market {
   change: number | null
   decimals: number
   icon?: string
+  venue?: 'hyperliquid' | 'binance'
 }
 
 export const MARKETS: Market[] = [

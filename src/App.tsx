@@ -8,6 +8,7 @@ import { DrawingToolbar } from './components/DrawingToolbar'
 import { FavoriteToolbar } from './components/FavoriteToolbar'
 import { Watchlist } from './components/Watchlist'
 import { MARKETS, type Market } from './data/markets'
+import { fetchHyperliquidMarkets } from './lib/hyperliquid'
 import type { Interval, Range } from './lib/chartData'
 import type { Drawing, ToolId } from './lib/drawings'
 import type { Alert, ChartType, ScaleMode, Workspace } from './lib/types'
@@ -66,7 +67,6 @@ export default function App() {
     }
   }, [theme])
 
-  const [market, setMarket] = useState<Market>(MARKETS[0])
   const [interval, setInterval] = useState<Interval>('1h')
   const [range, setRange] = useState<Range>('2W')
   const [chartType, setChartType] = useState<ChartType>('candles')
@@ -140,9 +140,41 @@ export default function App() {
   }, [])
 
   const [tab, setTab] = useState<'chart' | 'trade'>('chart')
-  const [venue, setVenue] = useState<'hyperliquid' | 'binance'>('binance')
-  const [stars, setStars] = useState<string[]>(['btc', 'eth'])
+  const [venue, setVenue] = useState<'hyperliquid' | 'binance'>('hyperliquid')
+  const [markets, setMarkets] = useState<Market[]>([])
+  const [marketsLoading, setMarketsLoading] = useState(false)
+  const [market, setMarket] = useState<Market>(MARKETS[0])
+  const [stars, setStars] = useState<string[]>([])
   const [favoritesOnly, setFavoritesOnly] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      if (venue === 'binance') {
+        setMarkets(MARKETS)
+        setMarket((cur) => MARKETS.find((m) => m.id === cur.id) ?? MARKETS[0])
+        return
+      }
+      setMarketsLoading(true)
+      try {
+        const hl = await fetchHyperliquidMarkets()
+        if (cancelled) return
+        setMarkets(hl)
+        setMarket((cur) => hl.find((m) => m.ticker === cur.ticker) ?? hl.find((m) => m.ticker === 'BTC') ?? hl[0] ?? cur)
+      } catch {
+        if (cancelled) return
+        showToast('No se pudieron cargar símbolos de Hyperliquid')
+        setMarkets(MARKETS)
+        setMarket((cur) => MARKETS.find((m) => m.id === cur.id) ?? MARKETS[0])
+      } finally {
+        if (!cancelled) setMarketsLoading(false)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [venue, showToast])
 
   const toggleStar = (id: string) =>
     setStars((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
@@ -433,7 +465,7 @@ export default function App() {
 
         {!focused && (
           <Watchlist
-            markets={MARKETS}
+            markets={markets.length ? markets : MARKETS}
             selectedId={market.id}
             onSelect={setMarket}
             stars={stars}
@@ -444,6 +476,7 @@ export default function App() {
             setVenue={setVenue}
             favoritesOnly={favoritesOnly}
             setFavoritesOnly={setFavoritesOnly}
+            loading={marketsLoading}
             onToast={showToast}
           />
         )}

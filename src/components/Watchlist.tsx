@@ -14,6 +14,7 @@ interface WatchlistProps {
   setVenue: (v: 'hyperliquid' | 'binance') => void
   favoritesOnly: boolean
   setFavoritesOnly: (v: boolean) => void
+  loading?: boolean
   onToast: (msg: string) => void
 }
 
@@ -44,18 +45,18 @@ export function Watchlist(props: WatchlistProps) {
           className={`venue-tab ${props.venue === 'hyperliquid' ? 'active' : ''}`}
           onClick={() => props.setVenue('hyperliquid')}
         >
-          HyperLiquid <span className="count">97</span>
+          HyperLiquid <span className="count">{props.venue === 'hyperliquid' ? props.markets.length : '—'}</span>
         </button>
         <button
           className={`venue-tab ${props.venue === 'binance' ? 'active' : ''}`}
           onClick={() => props.setVenue('binance')}
         >
-          Binance
+          Binance <span className="count">{props.venue === 'binance' ? props.markets.length : ''}</span>
         </button>
       </div>
 
       <div className="list-head">
-        <span>Top 30 · 24h volume</span>
+        <span>{props.venue === 'hyperliquid' ? (props.loading ? 'Loading…' : `${list.length} markets`) : 'Top 30 · 24h volume'}</span>
         <span className="badge">PUBLIC</span>
         <span className="spacer" />
         <button
@@ -67,7 +68,9 @@ export function Watchlist(props: WatchlistProps) {
         </button>
       </div>
 
-      {props.favoritesOnly && list.length === 0 ? (
+      {props.loading ? (
+        <div className="favorites-empty">Cargando símbolos de Hyperliquid…</div>
+      ) : props.favoritesOnly && list.length === 0 ? (
         <div className="favorites-empty">
           <strong>Favorites</strong>
           Star a market from search or the watchlist
