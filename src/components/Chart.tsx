@@ -155,7 +155,6 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
   const [yZoom, setYZoom] = useState(1)
   const [yPan, setYPan] = useState(0)
   const axisDrag = useRef<{ startY: number; startZoom: number } | null>(null)
-  const isPanningRef = useRef(false) // rastrea si el usuario está arrastrando horizontalmente
 
   useEffect(() => {
     setCandles(allCandles)
@@ -173,10 +172,10 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
 
   // cuando autoScroll está activo, mantener la última vela alineada a la derecha con el gap
   useEffect(() => {
-    if (!autoScroll || isPanningRef.current) return
+    if (!autoScroll || panning) return
     const maxOffset = Math.max(0, candles.length - viewCount)
     setOffset(maxOffset)
-  }, [candles.length, viewCount, autoScroll])
+  }, [candles.length, autoScroll])
 
   useEffect(() => {
     if (replayMode) return
@@ -232,18 +231,19 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
         return
       }
       const factor = e.deltaY > 0 ? 1.12 : 0.89
-      const newZoom = Math.min(Math.max(zoom * factor, 20 / baseCount), TOTAL_BARS / baseCount)
-      setZoom(newZoom)
-      // cuando autoScroll está activo, mantener la última vela alineada a la derecha
-      if (autoScroll) {
-        const newViewCount = Math.max(20, Math.min(TOTAL_BARS, Math.round(baseCount * newZoom)))
-        const maxOffset = Math.max(0, candles.length - newViewCount)
-        setOffset(maxOffset)
-      }
+      setZoom((z) => {
+        const newZoom = Math.min(Math.max(z * factor, 20 / baseCount), TOTAL_BARS / baseCount)
+        if (autoScroll) {
+          const newViewCount = Math.max(20, Math.min(TOTAL_BARS, Math.round(baseCount * newZoom)))
+          const maxOffset = Math.max(0, candles.length - newViewCount)
+          setOffset(maxOffset)
+        }
+        return newZoom
+      })
     }
     canvas.addEventListener('wheel', onWheel, { passive: false })
     return () => canvas.removeEventListener('wheel', onWheel)
-  }, [activeTool, baseCount, autoScroll, candles.length, zoom])
+  }, [activeTool, baseCount, autoScroll, candles.length])
 
   // drawing draft + drag state (refs to avoid re-render storms)
   const draft = useRef<{ tool: ToolId; pts: Pt[]; moved: boolean } | null>(null)
