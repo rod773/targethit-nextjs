@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="description" content="Free multi-market charts and demo trading. Every signed-in member gets HyperLiquid Stops and modeled Liquidations heatmaps across crypto and supported stock, metals, and oil perpetuals." />
+    <meta name="theme-color" content="#0d0d0d" />
+    <link rel="canonical" href="https://targethit.com/trade" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TargetHit" />
+    <meta property="og:title" content="TargetHit Trading Terminal | Free Charts &amp; Demo Trading" />
+    <meta property="og:description" content="Free multi-market charts, demo trading, and member-open HyperLiquid heatmaps: observable stop/trigger orders and modeled liquidation levels across crypto and supported stock, metals, and oil perpetuals." />
+    <meta property="og:url" content="https://targethit.com/trade" />
+    <meta property="og:image" content="https://targethit.com/og-terminal-heatmaps.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="TargetHit HyperLiquid Stops and modeled Liquidations heatmaps" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TargetHit Trading Terminal | Free Charts &amp; Demo Trading" />
+    <meta name="twitter:description" content="Free charts, demo trading, and member-open HyperLiquid Stops and modeled Liquidations heatmaps across crypto and supported TradFi perpetuals." />
+    <meta name="twitter:image" content="https://targethit.com/og-terminal-heatmaps.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="TargetHit" />
+    <title>TargetHit Trading Terminal | Free Charts &amp; Demo Trading</title>
+    <script>
+      (() => {
+        let theme;
+        try {
+          const saved = localStorage.getItem('theme.v2');
+          if (saved === 'light' || saved === 'dark') theme = saved;
+        } catch (_) {}
+        // [THEME-DEFAULT-DARK 2026-08-21 - Rick] default dark, no OS consult;
+        // explicit choices persist under theme.v2.
+        if (!theme) theme = 'dark';
+        const root = document.documentElement;
+        root.dataset.theme = theme;
+        root.classList.remove('light', 'dark');
+        root.classList.add(theme);
+        root.style.colorScheme = theme;
+        root.style.setProperty('--th-boot-bg', theme === 'light' ? '#e5eaf0' : '#0d0d0d');
+        document.querySelector('meta[name="theme-color"]')
+          ?.setAttribute('content', theme === 'light' ? '#e5eaf0' : '#0d0d0d');
+      })();
+      (() => {
+        // [HQ504 → HQ925 I18N] Locale before React, as resolveBootLocale() in
+        // src/i18n/locales.js decides it: 1. ?lang= previews ONE load (it writes
+        // no cookie); 2. a chart pane speaks its page's language; 3. the site page
+        // the member came from (its /es, /pt-br or /tr prefix, else English: the
+        // site's language is its URL); 4. targethit.com's th_locale cookie, for a
+        // PUBLIC locale only (a hidden locale's cookie is a preview leftover, never
+        // a choice); 5. English. The language subtag decides a tag.
+        const PUBLIC_LOCALES = ['en'];
+        const SITE_PREFIXES = { es: 'es-419', 'pt-br': 'pt-BR', tr: 'tr' };
+        const localeOf = (raw) => ({ en: 'en', es: 'es-419', pt: 'pt-BR', tr: 'tr' })[String(raw || '').trim().toLowerCase().replace(/_/g, '-').split('-')[0]] || null;
+        let locale = null;
+        try { locale = localeOf(new URLSearchParams(location.search).get('lang')); } catch (_) {}
+        if (!locale) try { if (window.parent !== window) locale = localeOf(window.parent.document.documentElement.lang); } catch (_) {}
+        if (!locale) try {
+          const from = new URL(document.referrer);
+          if (from.origin === location.origin && !/^\/trade(\/|$)/i.test(from.pathname)) {
+            locale = SITE_PREFIXES[(from.pathname.split('/')[1] || '').toLowerCase()] || 'en';
+          }
+        } catch (_) {}
+        if (!locale) {
+          const match = document.cookie.match(/(?:^|;\s*)th_locale=([^;]*)/);
+          let chosen = null;
+          if (match) try { chosen = localeOf(decodeURIComponent(match[1])); } catch (_) {}
+          if (chosen && PUBLIC_LOCALES.indexOf(chosen) >= 0) locale = chosen;
+        }
+        document.documentElement.lang = locale || 'en';
+      })();
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://targethit.com/#organization",
+            "name": "TargetHit",
+            "url": "https://targethit.com/",
+            "logo": "https://targethit.com/icons/icon-512.png",
+            "sameAs": [
+              "https://x.com/TargetHitRick",
+              "https://discord.gg/YT38EJ3nJr",
+              "https://youtube.com/@TargetHit",
+              "https://t.me/targethitfree"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://targethit.com/#website",
+            "name": "TargetHit",
+            "url": "https://targethit.com/",
+            "publisher": { "@id": "https://targethit.com/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://targethit.com/trade#terminal",
+            "name": "TargetHit Trading Terminal",
+            "url": "https://targethit.com/trade",
+            "applicationCategory": "FinanceApplication",
+            "operatingSystem": "Web",
+            "isAccessibleForFree": true,
+            "description": "A browser trading terminal for multi-market charts and demo trading. Every signed-in member gets HyperLiquid Stops Heatmap data from observable stop and trigger orders, plus modeled Liquidations Heatmaps across crypto and supported stock, metals, and oil perpetuals.",
+            "featureList": [
+              "Free multi-market charts",
+              "Free demo trading",
+              "HyperLiquid Stops Heatmap for every signed-in member",
+              "Modeled HyperLiquid Liquidations Heatmaps for every signed-in member",
+              "Supported crypto, stock, metals, and oil perpetual markets"
+            ],
+            "author": { "@id": "https://targethit.com/#organization" },
+            "offers": [
+              {
+                "@type": "Offer",
+                "name": "Free",
+                "price": "0",
+                "priceCurrency": "USD",
+                "url": "https://targethit.com/trade",
+                "category": "Free access",
+                "description": "Free multi-market charts, demo trading, and indicators for signed-in members."
+              },
+              {
+                "@type": "Offer",
+                "name": "VIP Monthly",
+                "price": "150",
+                "priceCurrency": "USD",
+                "url": "https://targethit.com/upgrade",
+                "category": "VIP membership",
+                "billingDuration": "P1M",
+                "description": "Monthly VIP access to live strategy signals and auto-execution features where available. Auto-Trade strategy seats are subject to current availability and are not reserved by purchase."
+              },
+              {
+                "@type": "Offer",
+                "name": "VIP Lifetime",
+                "price": "599",
+                "priceCurrency": "USD",
+                "url": "https://targethit.com/upgrade",
+                "category": "VIP membership",
+                "description": "Lifetime VIP access to live strategy signals and auto-execution features where available. Auto-Trade strategy seats are subject to current availability and are not reserved by purchase."
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+    <link rel="icon" href="/favicon.ico?v=th2" sizes="48x48" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=th2" />
+    <link rel="preload" href="/assets/InterVariable-latin-Dx4kXJAl.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/assets/JetBrainsMonoVariable-latin-6fWv1k7M.woff2" as="font" type="font/woff2" crossorigin />
+    <style>html,body,#root{height:100%;margin:0;background:var(--th-bg,var(--th-boot-bg,#0d0d0d));}</style>
+    <script type="module" crossorigin src="/assets/trade-CZGyL_Jp.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/trade-C51bytYD.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
