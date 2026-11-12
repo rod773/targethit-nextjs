@@ -60,6 +60,7 @@ interface ChartProps {
 
 const PAD = { left: 52, right: 68, top: 8, bottom: 26 }
 const OSC_HEIGHT = 92
+const AXIS_GAP = 12
 
 function readTheme(): ThemeColors {
   const cs = getComputedStyle(document.documentElement)
@@ -139,8 +140,10 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
   const [candles, setCandles] = useState<Candle[]>(allCandles)
   const [offset, setOffset] = useState(Math.max(0, allCandles.length - baseCount))
   const [panning, setPanning] = useState(false)
-  const pan = useRef<{ startX: number; startOffset: number; moved: boolean } | null>(null)
+  const [autoScroll, setAutoScroll] = useState(true)
+  const pan = useRef<{ startX: number; startY: number; startOffset: number; moved: boolean } | null>(null)
   const [yZoom, setYZoom] = useState(1)
+  const [yPan, setYPan] = useState(0)
   const axisDrag = useRef<{ startY: number; startZoom: number } | null>(null)
 
   useEffect(() => {
@@ -152,6 +155,7 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
   useEffect(() => {
     setZoom(1)
     setYZoom(1)
+    setYPan(0)
     setOffset(Math.max(0, allCandles.length - baseCount))
     setReplayIdx(-1)
   }, [allCandles, baseCount])
@@ -163,9 +167,14 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
 
   useEffect(() => {
     if (replayMode) return
-    const t = setInterval(() => setCandles((c) => tick(c)), 1400)
+    const t = setInterval(() => {
+      setCandles((c) => tick(c))
+      if (autoScroll && !panning) {
+        setOffset((o) => Math.max(0, o + 1))
+      }
+    }, 1400)
     return () => clearInterval(t)
-  }, [replayMode, market.id])
+  }, [replayMode, market.id, autoScroll, panning])
 
   useEffect(() => {
     if (!replayMode) {
@@ -260,7 +269,7 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
     [displayCandles, scaleMode],
   )
 
-  const scales = (cs: Candle[], mode: ScaleMode) => {
+const scales = (cs: Candle[], mode: ScaleMode) => {
     const firstClose = cs[0]?.close ?? 1
     const tf = (p: number) =>
       mode === 'log'
@@ -294,6 +303,13 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
       const half = (pMax - pMin) / 2 / yZoom
       pMin = center - half
       pMax = center + half
+    }
+    // vertical pan
+    if (yPan !== 0) {
+      const range = pMax - pMin
+      const shift = range * yPan * 0.15
+      pMin += shift
+      pMax += shift
     }
     return { priceMin: pMin, priceMax: pMax, tf, inv, firstClose }
   }
@@ -550,7 +566,7 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
       )
     }
 
-    // last price line
+// last price line
     const last = cs[cs.length - 1]
     if (showLastPrice) {
       const y = yOf(last.close)
@@ -566,9 +582,9 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
       const label = formatPrice(last.close, priceDigits(last.close))
       ctx.font = '10px "JetBrains Mono", monospace'
       const tw = ctx.measureText(label).width + 10
-      ctx.fillRect(plot.x + plot.w + 2, y - 8, Math.min(tw, PAD.right - 4), 16)
-      ctx.fillStyle = '#fff'
-      ctx.fillText(label, plot.x + plot.w + 6, y + 3)
+      ctx.fillRect(plot.x + plot.w + AXIS_GAP, y - 8, Math.min(tw, PAD.right - AXIS_GAP - 2), 16)
+ctx.fillStyle = '#fff'
+      ctx.fillText(label, plot.x + plot.w + AXIS_GAP, y + 3)
     }
 
     // price axis labels
@@ -584,7 +600,7 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
           : scaleMode === 'indexed'
             ? v.toFixed(2)
             : formatPrice(sc.inv(v), priceDigits(sc.inv(v)))
-      ctx.fillText(label, plot.x + plot.w + 6, y + 3)
+      ctx.fillText(label, plot.x + plot.w + AXIS_GAP, y + 3)
     }
 
     // time axis labels
@@ -621,12 +637,12 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
             : scaleMode === 'indexed'
               ? v.toFixed(2)
               : formatPrice(sc.inv(v), priceDigits(sc.inv(v)))
-        ctx.fillStyle = theme.card
+ctx.fillStyle = theme.card
         ctx.strokeStyle = theme.border
-        ctx.fillRect(plot.x + plot.w + 2, y - 8, PAD.right - 6, 16)
-        ctx.strokeRect(plot.x + plot.w + 2, y - 8, PAD.right - 6, 16)
+        ctx.fillRect(plot.x + plot.w + AXIS_GAP, y - 8, PAD.right - AXIS_GAP - 2, 16)
+        ctx.strokeRect(plot.x + plot.w + AXIS_GAP, y - 8, PAD.right - AXIS_GAP - 2, 16)
         ctx.fillStyle = theme.fg
-        ctx.fillText(label, plot.x + plot.w + 6, y + 3)
+        ctx.fillText(label, plot.x + plot.w + AXIS_GAP + 4, y + 3)
       }
     }
 
@@ -663,6 +679,7 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
     scaleMode,
     invert,
     yZoom,
+    yPan,
     geom,
     market.id,
     compare,
@@ -731,8 +748,9 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
       }
     }
     setSelectedId(null)
-    pan.current = { startX: x, startOffset: offset, moved: false }
+    pan.current = { startX: x, startY: y, startOffset: offset, moved: false }
     setPanning(true)
+    setAutoScroll(false)
     return
   }
 
@@ -789,11 +807,20 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
 
     if (pan.current) {
       const dx = x - pan.current.startX
+      const dy = y - pan.current.startY
       const barW = plot.w / Math.max(1, displayCandles.length)
       const delta = Math.round(-dx / barW)
       const maxOff = Math.max(0, candles.length - viewCount)
       setOffset(Math.min(Math.max(0, pan.current.startOffset + delta), maxOff))
-      pan.current.moved = pan.current.moved || Math.abs(dx) > 2
+      // vertical pan
+      const priceRange = (() => {
+        const cs = displayCandles
+        const sc = scales(cs, scaleMode)
+        return sc.priceMax - sc.priceMin
+      })()
+      const panShift = dy / plot.h * 0.05
+      setYPan((prev) => Math.max(-2, Math.min(2, prev + panShift)))
+      pan.current.moved = pan.current.moved || Math.abs(dx) > 2 || Math.abs(dy) > 2
       return
     }
 
@@ -846,6 +873,8 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
     setPanning(false)
   }
 
+  const enableAutoScroll = () => setAutoScroll(true)
+
   const onPointerLeave = () => {
     setHover(null)
     setHoverIdx(null)
@@ -856,8 +885,10 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
     const { plot } = geom()
     if (x > plot.x + plot.w) {
       setYZoom(1)
+      setYPan(0)
       return
     }
+    setAutoScroll(true)
     const view = currentView()
     for (let i = drawings.length - 1; i >= 0; i--) {
       const d = drawings[i]
@@ -980,11 +1011,26 @@ export const Chart = forwardRef<ChartHandle, ChartProps>(function Chart(props, r
         <div className="legend-chip">
           <span className="swatch" /> Liq heatmap (matrix) Â· both
         </div>
-        <div className="legend-chip">
+<div className="legend-chip">
           <span style={{ color: '#22d3ee' }}>CVD</span>
           <span className="cvd">1D</span>
           <span>âˆ’$472.4M Î” âˆ’$6.7M L âˆ’$408.4M S âˆ’$12.5M</span>
         </div>
+        <button
+          className="tb-btn"
+          style={{
+            marginLeft: 8,
+            padding: '2px 8px',
+            fontSize: 11,
+            background: autoScroll ? 'var(--th-buy)' : 'transparent',
+            color: autoScroll ? '#000' : 'var(--th-fg)',
+            borderColor: autoScroll ? 'var(--th-buy)' : 'var(--th-border)',
+          }}
+          onClick={() => setAutoScroll((v) => !v)}
+          title={autoScroll ? 'Auto-scroll ON · Click to disable' : 'Auto-scroll OFF · Click to enable'}
+        >
+          {autoScroll ? '📍' : '📌'}
+        </button>
       </div>
 
       <div className="symbol-info">
